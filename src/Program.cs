@@ -1,10 +1,12 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
-// get some fake data
+// Get data
 var products = JsonSerializer.Deserialize<List<Product>>(File.ReadAllText("./Data/products.json"));
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Swagger Config
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -22,30 +24,17 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddAiPluginGen(options =>
-{
-    options.NameForHuman = "Contoso Product Search";
-    options.NameForModel = "contosoproducts";
-    options.LegalInfoUrl = "https://www.microsoft.com/en-us/legal/";
-    options.ContactEmail = "noreply@microsoft.com";
-    options.RelativeLogoUrl = "/logo.png";
-    options.DescriptionForHuman = "Search through Contoso's wide range of outdoor and recreational products.";
-    options.DescriptionForModel = "Plugin for searching through Contoso's outdoor and recreational products. Use it whenever a user asks about products or activities related to camping, hiking, climbing or camping.";
-    options.ApiDefinition = new() { RelativeUrl = "/swagger/v1/swagger.yaml" };
-});
-
 var app = builder.Build();
 
+// CORS
 app.UseCors("OpenAI");
 
-// Static files here are being used only to serve the logo.png
+// Static files here are being used only to serve the logo.png and manifest files
 // This can be served from anywhere (CDN, blob storage, etc.) and if so, this can be removed.
 app.UseStaticFiles();
 
 // This ensures the OpenAPI definition is served for the plugin
 app.UseSwagger();
-
-app.UseAiPluginGen();
 
 if (app.Environment.IsDevelopment())
 {
@@ -56,10 +45,11 @@ app.UseHttpsRedirection();
 
 app.MapGet("/products", (string? query = null) =>
 {
-    if (query is not null) { 
+    if (query is not null)
+    {
         return products?.Where(p => p.Name?.Contains(query, StringComparison.OrdinalIgnoreCase) == true ||
-            p.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true || 
-            p.Category?.Contains(query, StringComparison.OrdinalIgnoreCase) == true); 
+            p.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true ||
+            p.Category?.Contains(query, StringComparison.OrdinalIgnoreCase) == true);
     }
 
     return products;
@@ -69,3 +59,17 @@ app.MapGet("/products", (string? query = null) =>
 .WithOpenApi();
 
 app.Run();
+
+public class Product
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
+    [JsonPropertyName("size")]
+    public string? Size { get; set; }
+    [JsonPropertyName("price")]
+    public float Price { get; set; }
+}
